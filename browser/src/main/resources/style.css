@@ -1,0 +1,150 @@
+@import url('https://fonts.googleapis.com/css?family=Nanum+Gothic|Noto+Sans+SC|Roboto&display=swap');
+
+body {
+    font-family: Chilanka, "Noto Sans SC", "Nanum Gothic", serif;
+}
+
+a {
+    text-decoration: none;
+}
+
+#content {
+    max-width: 400px;
+    margin: auto;
+}
+
+input[disabled] {
+    background-color: #EEE;
+}
+
+#input-form {
+    position: relative;
+}
+
+.message-input {
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 8px;
+    border: 1px solid #777;
+    padding: 3px 43px 3px 3px;
+    margin: 0;
+    min-height: 27px;
+    font-family: inherit;
+}
+
+.image-input {
+    display: none;
+}
+
+.select-image {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+
+    width: 36px;
+    cursor: pointer;
+
+    border: 1px solid #777;
+    border-radius: 0 8px 8px 0;
+
+    background-color: #EEE;
+    background-image: url(camera.svg);
+    background-size: 22px;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+#connected-users {
+    font-weight: lighter;
+    float: right;
+}
+
+#chat-box img {
+    max-width: 100%;
+}
+
+.message .message-sender {
+    font-weight: bold;
+}
+
+.status-message {
+    color: #555;
+    font-style: italic;
+}
+
+.status-action {
+    background: none;
+    border: none;
+    margin: 0 5px;
+    padding: 0 5px;
+    cursor: pointer;
+    color: blue;
+}
+
+.status-action:disabled {
+    color: #555;
+    text-decoration: line-through;
+    cursor: default;
+}
+
+.status-action-chosen {
+    color: deeppink !important;
+}
+
+.about-link {
+    font-size: 0.8em;
+    color: #777;
+    text-align: center;
+}
+
+.about-link a {
+    color: inherit;
+}
+
+.inline-icon {
+    height: 1em;
+    vertical-align: -0.15em;
+}
+
+.spinner {
+    margin: 16px auto;
+    width: 105px;
+    font-size: 0;
+}
+
+.spinner .rect {
+    width: 25px;
+    height: 10px;
+    margin: 0 5px;
+    background-color: black;
+    display: inline-block;
+    animation: anim1 1s infinite ease-in-out;
+}
+
+.spinner .rect1 {
+    animation-delay: 0s;
+}
+
+.spinner .rect2 {
+    animation-delay: -0.66s;
+}
+
+.spinner .rect3 {
+    animation-delay: -0.33s;
+}
+
+@keyframes anim1 {
+    0% {
+        opacity: 0;
+        background-color: black;
+    }
+    50% {
+        opacity: 1;
+        background-color: deeppink;
+    }
+    100% {
+        opacity: 0;
+        background-color: black;
+    }
+}

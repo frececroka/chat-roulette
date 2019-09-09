@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="style.css"/>
+    <title>Chat Roulette</title>
+</head>
+<body>
+
+<div id="content">
+    <span id="connected-users"></span>
+    <h1>Chat Roulette</h1>
+
+    <form id="input-form">
+        <input type="text" name="message" class="message-input" disabled="disabled" autocomplete="off"/>
+        <label class="select-image">
+            <input type="file" multiple accept="image/*" name="image-input" class="image-input" disabled="disabled"/>
+        </label>
+    </form>
+
+    <div class="spinner" id="connection-spinner">
+        <div class="rect rect1"></div>
+        <div class="rect rect2"></div>
+        <div class="rect rect3"></div>
+    </div>
+
+    <p id="youre-alone" class="status-message" style="display: none">Looks like it's pretty lonely around here. If you would like to chat with yourself, <a href="" target="_blank">open</a> this page again in a new window.</p>
+    <p id="stranger-is-typing" class="status-message" style="display: none">Stranger is typing...</p>
+    <p id="waiting-for-stranger" class="status-message" style="display: none">Waiting for stranger...</p>
+    <div id="chat-box"></div>
+
+    <p class="about-link">
+        <a href="about.html" target="_blank">About</a>
+    </p>
+</div>
+
+<script type="text/javascript" src="main.js"></script>
+
+</body>
+</html>
