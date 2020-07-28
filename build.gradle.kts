@@ -4,7 +4,7 @@ group =  "de.lorenzgorse"
 version = "1.0-SNAPSHOT"
 
 val kotlinVersion by extra("1.3.50")
-val ktorVersion by extra ("1.2.4")
+val ktorVersion by extra ("1.3.1")
 
 buildscript {
     extra.apply {

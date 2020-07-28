@@ -35,7 +35,7 @@ fun createServer(port: Int) = embeddedServer(Netty, port) {
     }
 
     install(WebSockets) {
-        pingPeriod = Duration.ofSeconds(5)
+        pingPeriodMillis = 5000
     }
 
     val matchMaker = MatchMaker.create(this)
