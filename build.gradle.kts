@@ -3,20 +3,7 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent.*
 group =  "de.lorenzgorse"
 version = "1.0-SNAPSHOT"
 
-val kotlinVersion by extra("1.3.50")
 val ktorVersion by extra ("1.3.1")
-
-buildscript {
-    extra.apply {
-        set("kotlinVersion", "1.3.50")
-    }
-    repositories {
-        mavenCentral()
-    }
-    dependencies {
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:${extra["kotlinVersion"]}")
-    }
-}
 
 repositories {
     mavenLocal()
@@ -34,7 +21,7 @@ application {
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion")
+    implementation(kotlin("stdlib-jdk8"))
     implementation("ch.qos.logback:logback-classic:1.2.3")
     implementation("io.ktor:ktor-server-netty:$ktorVersion")
     implementation("io.ktor:ktor-gson:$ktorVersion")
