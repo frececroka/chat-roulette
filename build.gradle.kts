@@ -27,6 +27,7 @@ dependencies {
     implementation("io.ktor:ktor-gson:$ktorVersion")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
     implementation("io.ktor:ktor-websockets:$ktorVersion")
+    testImplementation("com.xenomachina:kotlin-argparser:2.0.7")
     testImplementation("org.junit.jupiter:junit-jupiter:5.5.2")
 }
 

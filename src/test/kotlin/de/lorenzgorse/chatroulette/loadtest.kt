@@ -1,11 +1,12 @@
 package de.lorenzgorse.chatroulette
 
+import com.xenomachina.argparser.ArgParser
+import com.xenomachina.argparser.default
 import io.ktor.client.HttpClient
 import io.ktor.client.features.websocket.WebSockets
 import io.ktor.client.features.websocket.ws
 import io.ktor.client.features.websocket.wss
 import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.client.request.host
 import io.ktor.http.HttpMethod
 import io.ktor.http.cio.websocket.Frame
 import io.ktor.http.cio.websocket.WebSocketSession
@@ -15,29 +16,37 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.coroutines.channels.Channel.Factory.UNLIMITED
 import kotlinx.coroutines.selects.select
-import java.net.URL
-import java.time.Duration
 import kotlin.random.Random
 
-val numStages = 14
-val numClientsPerStage = 1000
-val msgsPerConnection = 100
-val msgDelayMin = 300L
-val msgDelayMax = 6000L
+class MyArgs(parser: ArgParser) {
+    val stages by parser.storing("number of stages") { toInt() }
+            .default(14)
+    val clientsPerStage by parser.storing("clients per stage") { toInt() }
+            .default(1000)
+    val stageDelay by parser.storing("number of seconds to wait between stages") { toInt() }
+            .default(60)
+    val msgsPerConnection by parser.storing("messages per connection") { toInt() }
+            .default(100)
+    val msgDelayMin by parser.storing("minimum delay between two messages") { toLong() }
+            .default(300)
+    val msgDelayMax by parser.storing("maximum delay between two messages") { toLong() }
+            .default(6000)
+}
 
 @ExperimentalCoroutinesApi
 @ObsoleteCoroutinesApi
 @KtorExperimentalAPI
-fun main() = runBlocking {
+fun main(args: Array<String>) = runBlocking {
+    val options = ArgParser(args).parseInto(::MyArgs)
     val status = Channel<Status>(100)
     val statusPrinter = launch { printStatus(status) }
-    val connect = RemoteServer("localhost", port = 8080)::connect
+    val connect = RemoteServer("guarded-waters-49301.herokuapp.com", secure = true)::connect
     produce {
-        repeat(numStages) {
-            repeat(numClientsPerStage) {
-                send(launch { singleUser(status, connect) })
+        repeat(options.stages) {
+            repeat(options.clientsPerStage) {
+                send(launch { singleUser(status, connect, options) })
             }
-            delay(60_000)
+            delay(options.stageDelay * 1000L)
         }
     }.toList().forEach { it.join() }
     statusPrinter.cancel()
@@ -185,12 +194,12 @@ class RemoteServer(private val host: String, private val port: Int? = null, priv
 }
 
 @ObsoleteCoroutinesApi
-private suspend fun singleUser(status: Channel<Status>, connect: suspend (suspend ConnectedScope.() -> Unit) -> Unit) {
+private suspend fun singleUser(status: Channel<Status>, connect: suspend (suspend ConnectedScope.() -> Unit) -> Unit, options: MyArgs) {
     while (true) {
         try {
             status.send(Status.Connect)
             connect {
-                LoadtestClient(status, incoming, outgoing).start()
+                LoadtestClient(status, incoming, outgoing, options).start()
             }
         } catch (e: ClosedSendChannelException) {
             status.send(Status.BrokenChannel)
@@ -205,7 +214,8 @@ private suspend fun singleUser(status: Channel<Status>, connect: suspend (suspen
 class LoadtestClient(
         private val status: Channel<Status>,
         private val incoming: ReceiveChannel<Frame>,
-        private val outgoing: SendChannel<Frame>
+        private val outgoing: SendChannel<Frame>,
+        private val options: MyArgs
 ) {
 
     private var userId: Long? = null
@@ -215,9 +225,9 @@ class LoadtestClient(
 
     @ObsoleteCoroutinesApi
     suspend fun start() {
-        val timeout = ticker(Random.nextLong(msgDelayMin, msgDelayMax))
-        for (i in 1..msgsPerConnection) {
-            sendOne(timeout, i, msgsPerConnection)
+        val timeout = ticker(Random.nextLong(options.msgDelayMin, options.msgDelayMax))
+        for (i in 1..options.msgsPerConnection) {
+            sendOne(timeout, i, options.msgsPerConnection)
         }
     }
 
