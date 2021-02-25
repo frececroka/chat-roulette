@@ -3,7 +3,7 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent.*
 group =  "de.lorenzgorse"
 version = "1.0-SNAPSHOT"
 
-val ktorVersion by extra ("1.3.1")
+val ktorVersion by extra ("1.5.1")
 
 repositories {
     mavenLocal()
@@ -11,7 +11,7 @@ repositories {
 }
 
 plugins {
-    kotlin("jvm") version "1.3.50"
+    kotlin("jvm") version "1.4.30"
     application
 }
 
@@ -37,10 +37,7 @@ dependencies {
 task<Copy>("copyFrontendArtifacts") {
     dependsOn("browser:browserWebpack")
     dependsOn("browser:processResources")
-    from("browser/build/distributions/browser-1.0-SNAPSHOT.js") {
-        rename { "main.js" }
-    }
-    from("browser/build/processedResources/Js/main")
+    from("browser/build/distributions")
     into("build/resources/main/static")
 }
 

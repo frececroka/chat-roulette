@@ -14,19 +14,15 @@ dependencies {
 }
 
 kotlin {
-    target {
-        useCommonJs()
+    js {
         browser {
-            webpackTask {
-                sourceMaps = false
-            }
         }
     }
     sourceSets {
         main {
             dependencies {
-                implementation(npm("file-type", "12.3.0"))
-                implementation(npm("is-svg", "4.2.0"))
+                implementation(npm("file-type", "16.2.0"))
+                implementation(npm("is-svg", "4.2.1"))
             }
         }
     }

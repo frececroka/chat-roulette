@@ -1,9 +1,11 @@
-import org.khronos.webgl.*
+import externals.filetype.fromBuffer
+import externals.isSvg
+import kotlinx.browser.document
+import kotlinx.browser.window
+import org.khronos.webgl.ArrayBuffer
 import org.w3c.dom.*
-import org.w3c.files.*
+import org.w3c.files.Blob
 import org.w3c.xhr.FormData
-import kotlin.browser.document
-import kotlin.browser.window
 
 val inputForm = document.getElementById("input-form") as HTMLFormElement
 val messageInput = inputForm.getElementsByClassName("message-input")[0] as HTMLInputElement
@@ -112,7 +114,7 @@ private fun handleFrame(event: MessageEvent) {
 
 private fun sendImages(webSocket: WebSocket) {
     val files = fileInput.files.toArray()
-    val smallFiles = files.filter { it.size <= 20*1024*1024 }
+    val smallFiles = files.filter { it.size.toLong() <= 20 * 1024 * 1024 }
     if (smallFiles.size < files.size) {
         val diff = files.size - smallFiles.size
         val msg = if (diff == 1) "this image is" else "$diff images were"
@@ -121,12 +123,14 @@ private fun sendImages(webSocket: WebSocket) {
     smallFiles.forEach { file ->
         readBlob(file) { arrayBuffer ->
             val isSvg = isSvg(arrayToString(arrayBuffer))
-            val mime = if (isSvg) "image/svg+xml" else fileType(arrayBuffer)?.mime
-            if (mime != null && mime.startsWith("image/")) {
-                webSocket.send(arrayBuffer)
-                appendImageMessage("You", mime, arrayBuffer)
-            } else {
-                window.alert("Sorry, that is not an image.")
+            fromBuffer(arrayBuffer).then { fileType ->
+                val mime = if (isSvg) "image/svg+xml" else fileType?.mime
+                if (mime != null && mime.startsWith("image/")) {
+                    webSocket.send(arrayBuffer)
+                    appendImageMessage("You", mime, arrayBuffer)
+                } else {
+                    window.alert("Sorry, that is not an image.")
+                }
             }
         }
     }

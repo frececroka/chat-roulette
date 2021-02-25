@@ -1,10 +1,10 @@
+import kotlinx.browser.document
+import kotlinx.browser.window
 import org.khronos.webgl.ArrayBuffer
 import org.khronos.webgl.Uint8Array
 import org.khronos.webgl.get
 import org.w3c.dom.HTMLElement
 import org.w3c.files.*
-import kotlin.browser.document
-import kotlin.browser.window
 
 fun activeTimeout(onActive: () -> Unit, onInactive: () -> Unit): Pair<() -> Unit, () -> Unit> {
     var isActive = false
