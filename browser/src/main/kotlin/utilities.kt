@@ -5,6 +5,8 @@ import org.khronos.webgl.Uint8Array
 import org.khronos.webgl.get
 import org.w3c.dom.HTMLElement
 import org.w3c.files.*
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 fun activeTimeout(onActive: () -> Unit, onInactive: () -> Unit): Pair<() -> Unit, () -> Unit> {
     var isActive = false
@@ -58,9 +60,9 @@ fun FileList?.toArray(): List<File> =
                 }
             }
 
-fun readBlob(blob: Blob, cb: (ArrayBuffer) -> Unit) {
+suspend fun readBlob(blob: Blob): ArrayBuffer = suspendCoroutine { cont ->
     val reader = FileReader()
-    reader.onload = { cb(reader.result as ArrayBuffer) }
+    reader.onload = { cont.resume(reader.result as ArrayBuffer) }
     reader.readAsArrayBuffer(blob)
 }
 

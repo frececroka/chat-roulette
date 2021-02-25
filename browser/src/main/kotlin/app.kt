@@ -1,7 +1,9 @@
-import externals.filetype.fromBuffer
+import externals.filetype.fileType
 import externals.isSvg
 import kotlinx.browser.document
 import kotlinx.browser.window
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import org.khronos.webgl.ArrayBuffer
 import org.w3c.dom.*
 import org.w3c.files.Blob
@@ -28,7 +30,11 @@ fun main() {
         null
     }
 
-    webSocket.onmessage = { handleFrame(it) }
+    webSocket.onmessage = {
+        GlobalScope.launch {
+            handleFrame(it)
+        }
+    }
 
     fun reconnect() {
         webSocket.onopen = null
@@ -69,13 +75,16 @@ fun main() {
         event.preventDefault()
     }
 
-    fileInput.onchange = { sendImages(webSocket) }
+    fileInput.onchange = {
+        GlobalScope.launch {
+            sendImages(webSocket)
+        }
+    }
 }
 
-private fun handleFrame(event: MessageEvent) {
+private suspend fun handleFrame(event: MessageEvent) {
     when (val data = event.data) {
-        is Blob ->
-            readBlob(data) {appendImageMessage("Stranger", "image/jpeg", it) }
+        is Blob -> appendImageMessage("Stranger", "image/jpeg", readBlob(data))
         is String ->
             when {
                 data.startsWith("users ") -> {
@@ -112,7 +121,7 @@ private fun handleFrame(event: MessageEvent) {
     }
 }
 
-private fun sendImages(webSocket: WebSocket) {
+private suspend fun sendImages(webSocket: WebSocket) {
     val files = fileInput.files.toArray()
     val smallFiles = files.filter { it.size.toLong() <= 20 * 1024 * 1024 }
     if (smallFiles.size < files.size) {
@@ -120,18 +129,16 @@ private fun sendImages(webSocket: WebSocket) {
         val msg = if (diff == 1) "this image is" else "$diff images were"
         window.alert("Sorry, $msg too big. The maximum file size is 20Mb.")
     }
-    smallFiles.forEach { file ->
-        readBlob(file) { arrayBuffer ->
-            val isSvg = isSvg(arrayToString(arrayBuffer))
-            fromBuffer(arrayBuffer).then { fileType ->
-                val mime = if (isSvg) "image/svg+xml" else fileType?.mime
-                if (mime != null && mime.startsWith("image/")) {
-                    webSocket.send(arrayBuffer)
-                    appendImageMessage("You", mime, arrayBuffer)
-                } else {
-                    window.alert("Sorry, that is not an image.")
-                }
-            }
+
+    for (file in smallFiles) {
+        val arrayBuffer = readBlob(file)
+        val isSvg = isSvg(arrayToString(arrayBuffer))
+        val mime = if (isSvg) "image/svg+xml" else fileType(arrayBuffer)?.mime
+        if (mime != null && mime.startsWith("image/")) {
+            webSocket.send(arrayBuffer)
+            appendImageMessage("You", mime, arrayBuffer)
+        } else {
+            window.alert("Sorry, that is not an image.")
         }
     }
 }
