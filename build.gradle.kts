@@ -10,10 +10,12 @@ val ktorVersion by extra ("1.5.1")
 repositories {
     mavenLocal()
     mavenCentral()
+    maven(url = "https://kotlin.bintray.com/kotlinx/")
 }
 
 plugins {
     kotlin("multiplatform") version "1.4.30"
+    kotlin("plugin.serialization") version "1.4.30"
     application
 }
 
@@ -26,12 +28,16 @@ kotlin {
     }
 
     sourceSets {
+        val commonMain by getting {
+            dependencies {
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.1.0")
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2")
+            }
+        }
         val jsMain by getting {
             dependencies {
                 implementation(npm("file-type", "16.2.0"))
                 implementation(npm("is-svg", "4.2.1"))
-                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.1.0")
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2")
             }
         }
         val jvmMain by getting {
@@ -41,8 +47,6 @@ kotlin {
                 implementation("io.ktor:ktor-gson:$ktorVersion")
                 implementation("io.ktor:ktor-client-cio:$ktorVersion")
                 implementation("io.ktor:ktor-websockets:$ktorVersion")
-                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.1.0")
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2")
             }
         }
         val jvmTest by getting {

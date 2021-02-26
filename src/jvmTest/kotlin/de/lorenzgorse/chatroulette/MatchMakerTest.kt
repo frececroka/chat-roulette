@@ -35,8 +35,8 @@ class MatchMakerTest : CoroutineScope by CoroutineScope(Dispatchers.Default) {
 
         val unmatchedChannels = channels
                 .map { (inbox, outbox) -> Pair(
-                        inbox as Channel<PeerMessage>,
-                        outbox as Channel<PeerMessage>) }
+                        inbox as Channel<ChatEvent>,
+                        outbox as Channel<ChatEvent>) }
                 .toMutableList()
 
         for (channel in channels) {

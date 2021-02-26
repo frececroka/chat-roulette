@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory
 
 class MatchMaker(private val inbox: ReceiveChannel<GetPeer>) {
 
-    data class GetPeer(val reply: Channel<Pair<ReceiveChannel<PeerMessage>, SendChannel<PeerMessage>>> = Channel())
+    data class GetPeer(val reply: Channel<Pair<ReceiveChannel<ChatEvent>, SendChannel<ChatEvent>>> = Channel())
 
     companion object {
 
@@ -51,8 +51,8 @@ class MatchMaker(private val inbox: ReceiveChannel<GetPeer>) {
 
     @ExperimentalCoroutinesApi
     private suspend fun singleMatch(
-            inbox1: Channel<PeerMessage> = Channel(UNLIMITED),
-            inbox2: Channel<PeerMessage> = Channel(UNLIMITED),
+            inbox1: Channel<ChatEvent> = Channel(UNLIMITED),
+            inbox2: Channel<ChatEvent> = Channel(UNLIMITED),
             stage: Stage = Stage1
     ): Boolean {
         while (true) {

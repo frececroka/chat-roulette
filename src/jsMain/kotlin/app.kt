@@ -1,12 +1,16 @@
+import de.lorenzgorse.chatroulette.ChatEvent
 import externals.filetype.fileType
 import externals.isSvg
 import kotlinx.browser.document
 import kotlinx.browser.window
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.khronos.webgl.ArrayBuffer
+import org.khronos.webgl.Uint8Array
 import org.w3c.dom.*
-import org.w3c.files.Blob
 import org.w3c.xhr.FormData
 
 val inputForm = document.getElementById("input-form") as HTMLFormElement
@@ -59,8 +63,8 @@ fun main() {
     }
 
     val (typingActivate, typingDeactivate) = activeTimeout(
-            { webSocket.send("typing true") },
-            { webSocket.send("typing false") })
+            { sendChatEvent(webSocket, ChatEvent.IsTyping(true)) },
+            { sendChatEvent(webSocket, ChatEvent.IsTyping(false)) })
 
     messageInput.onkeydown = { typingActivate() }
 
@@ -68,7 +72,7 @@ fun main() {
         val form = event.target as HTMLFormElement
         val data = FormData(form)
         val message = data.get("message") as String
-        webSocket.send("message $message")
+        sendChatEvent(webSocket, ChatEvent.Message.Text(message))
         appendTextMessage("You", message)
         typingDeactivate()
         form.reset()
@@ -82,42 +86,42 @@ fun main() {
     }
 }
 
-private suspend fun handleFrame(event: MessageEvent) {
-    when (val data = event.data) {
-        is Blob -> appendImageMessage("Stranger", "image/jpeg", readBlob(data))
-        is String ->
-            when {
-                data.startsWith("users ") -> {
-                    val users = data.substring("users ".length).toInt()
-                    youreAlone.show(users == 1)
-                    connectedUsers.innerText = "$users users"
-                }
-                data.startsWith("user_id ") -> {
-                    val userId = data.substring("user_id ".length)
-                    appendStatusMessage("You are stranger #$userId.")
-                }
-                data.startsWith("connected ") -> {
-                    val peerId = data.substring("connected ".length)
-                    enableInputs(true)
-                    youreAlone.hide()
-                    waitingForStranger.hide()
-                    appendStatusMessage("Connected to stranger #$peerId.")
-                }
-                data === "disconnected" -> {
-                    enableInputs(false)
-                    waitingForStranger.show()
-                    appendStatusMessage("Disconnected from stranger.")
-                }
-                data.startsWith("message ") -> {
-                    strangerIsTyping.hide()
-                    val message = data.substring("message ".length)
-                    appendTextMessage("Stranger", message)
-                }
-                data.startsWith("peer_typing ") -> {
-                    val isTyping = data.substring("peer_typing ".length) === "true"
-                    strangerIsTyping.show(isTyping)
-                }
-            }
+private fun handleFrame(event: MessageEvent) {
+    val chatEvent = when (val data = event.data) {
+        is String -> Json.decodeFromString<ChatEvent>(data)
+        else -> return
+    }
+    when (chatEvent) {
+        is ChatEvent.UserCount -> {
+            youreAlone.show(chatEvent.userCount == 1L)
+            connectedUsers.innerText = "${chatEvent.userCount} users"
+        }
+        is ChatEvent.UserId -> {
+            appendStatusMessage("You are stranger #${chatEvent.userId}.")
+        }
+        is ChatEvent.Hello -> {
+            enableInputs(true)
+            youreAlone.hide()
+            waitingForStranger.hide()
+            appendStatusMessage("Connected to stranger #${chatEvent.user.id}.")
+        }
+        is ChatEvent.Disconnected -> {
+            enableInputs(false)
+            strangerIsTyping.show(false)
+            waitingForStranger.show()
+            appendStatusMessage("Disconnected from stranger.")
+        }
+        is ChatEvent.IsTyping -> {
+            strangerIsTyping.show(chatEvent.typing)
+        }
+        is ChatEvent.Message.Text -> {
+            strangerIsTyping.hide()
+            appendTextMessage("Stranger", chatEvent.text)
+        }
+        is ChatEvent.Message.Image -> {
+            val uint8Array = Uint8Array(chatEvent.image.toTypedArray())
+            appendImageMessage("Stranger", "image/jpeg", uint8Array.buffer)
+        }
     }
 }
 
@@ -135,12 +139,17 @@ private suspend fun sendImages(webSocket: WebSocket) {
         val isSvg = isSvg(arrayToString(arrayBuffer))
         val mime = if (isSvg) "image/svg+xml" else fileType(arrayBuffer)?.mime
         if (mime != null && mime.startsWith("image/")) {
-            webSocket.send(arrayBuffer)
+            val byteArray = arrayBufferToByteArray(arrayBuffer)
+            sendChatEvent(webSocket, ChatEvent.Message.Image(byteArray))
             appendImageMessage("You", mime, arrayBuffer)
         } else {
             window.alert("Sorry, that is not an image.")
         }
     }
+}
+
+private fun sendChatEvent(webSocket: WebSocket, chatEvent: ChatEvent) {
+    webSocket.send(Json.encodeToString(chatEvent))
 }
 
 private fun enableInputs(enabled: Boolean) {

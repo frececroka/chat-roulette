@@ -1,30 +1,16 @@
 package de.lorenzgorse.chatroulette
 
 import de.lorenzgorse.chatroulette.MatchMaker.GetPeer
-import de.lorenzgorse.chatroulette.PeerMessage.*
 import io.ktor.http.cio.websocket.Frame
 import io.ktor.http.cio.websocket.readText
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.coroutines.selects.select
 import org.slf4j.LoggerFactory
-import java.time.Instant
 import java.util.concurrent.atomic.AtomicLong
-
-data class User(val id: Long = nextId.getAndIncrement(), val created: Instant = Instant.now()) {
-    companion object {
-        private val nextId = AtomicLong()
-    }
-}
-
-sealed class PeerMessage {
-    data class Hello(val user: User) : PeerMessage()
-    data class IsTyping(val typing: Boolean) : PeerMessage()
-    sealed class ChatMessage : PeerMessage() {
-        data class Text(val text: String) : ChatMessage()
-        data class Image(val image: ByteArray) : ChatMessage()
-    }
-}
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 class Chat(
         private val incoming: ReceiveChannel<Frame>,
@@ -33,10 +19,11 @@ class Chat(
 ) {
 
     companion object {
+        private val nextUserId = AtomicLong()
         private val activeUsers = AtomicLong()
     }
 
-    private val user = User()
+    private val user = User(nextUserId.getAndIncrement())
 
     private val log = LoggerFactory.getLogger("user-${user.id}")!!
 
@@ -47,7 +34,7 @@ class Chat(
         activeUsers.incrementAndGet()
 
         try {
-            outgoing.send(Frame.Text("user_id ${user.id}"))
+            sendChatEvent(ChatEvent.UserId(user.id))
             coroutineScope {
                 val statusJob = launch { status() }
                 val peerJob = launch { while (loop()) { } }
@@ -73,7 +60,7 @@ class Chat(
     private suspend fun status() {
         while (true) {
             try {
-                outgoing.send(Frame.Text("users ${activeUsers.get()}"))
+                sendChatEvent(ChatEvent.UserCount(activeUsers.get()))
             } catch (e: ClosedSendChannelException) {
                 return
             }
@@ -100,7 +87,7 @@ class Chat(
 
         val channels =
             try {
-                select<Pair<ReceiveChannel<PeerMessage>, SendChannel<PeerMessage>>?> {
+                select<Pair<ReceiveChannel<ChatEvent>, SendChannel<ChatEvent>>?> {
                     consumeJob.onJoin { null }
                     getPeer.reply.onReceive { it }
                 }
@@ -120,8 +107,8 @@ class Chat(
     }
 
     inner class ConnectedState(
-            private val inbox: ReceiveChannel<PeerMessage>,
-            private val outbox: SendChannel<PeerMessage>
+            private val inbox: ReceiveChannel<ChatEvent>,
+            private val outbox: SendChannel<ChatEvent>
     ) {
 
         private val log = LoggerFactory.getLogger("user-${user.id}")!!
@@ -133,11 +120,11 @@ class Chat(
         suspend fun loop(): Boolean {
             log.info("New connection to peer.")
             try {
-                outbox.send(Hello(user))
+                outbox.send(ChatEvent.Hello(user))
                 val hello = inbox.receive()
-                require(hello is Hello) {
+                require(hello is ChatEvent.Hello) {
                     "First message from peer must be hello, but was $hello." }
-                outgoing.send(Frame.Text("connected ${hello.user.id}"))
+                sendChatEvent(hello)
                 while (true) {
                     select<Unit> {
                         incoming.onReceive { handleFrame(it) }
@@ -154,30 +141,17 @@ class Chat(
         private suspend fun handleFrame(frame: Frame) {
             when (frame) {
                 is Frame.Text -> {
-                    val content = frame.readText()
-                    when {
-                        content.startsWith("typing ") -> {
-                            val typing = content.substring("typing ".length).toBoolean()
-                            outbox.send(IsTyping(typing))
-                        }
-                        content.startsWith("message ") ->
-                            outbox.send(ChatMessage.Text(content.substring(" message".length)))
-                    }
+                    val json = frame.readText()
+                    val chatEvent = Json.decodeFromString<ChatEvent>(json)
+                    outbox.send(chatEvent)
                 }
-                is Frame.Binary ->
-                    outbox.send(ChatMessage.Image(frame.data))
+                else ->
+                    log.debug("Ignoring message: $frame")
             }
         }
 
-        private suspend fun handlePeerMessage(message: PeerMessage) {
-            when (message) {
-                is IsTyping ->
-                    outgoing.send(Frame.Text("peer_typing ${message.typing}"))
-                is ChatMessage.Text ->
-                    outgoing.send(Frame.Text("message ${message.text}"))
-                is ChatMessage.Image ->
-                    outgoing.send(Frame.Binary(true, message.image))
-            }
+        private suspend fun handlePeerMessage(chatEvent: ChatEvent) {
+            sendChatEvent(chatEvent)
         }
 
         @ExperimentalCoroutinesApi
@@ -190,12 +164,17 @@ class Chat(
 
         private suspend fun peerDisconnected(): Boolean =
                 try {
-                    outgoing.send(Frame.Text("disconnected"))
+                    sendChatEvent(ChatEvent.Disconnected)
                     true
                 } catch (e: ClosedSendChannelException) {
                     false
                 }
 
+    }
+
+    private suspend fun sendChatEvent(chatEvent: ChatEvent) {
+        val json = Json.encodeToString(chatEvent)
+        outgoing.send(Frame.Text(json))
     }
 
 }
