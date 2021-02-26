@@ -1,4 +1,6 @@
 import org.gradle.api.tasks.testing.logging.TestLogEvent.*
+import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpack
+import org.jetbrains.kotlin.gradle.targets.jvm.tasks.KotlinJvmTest
 
 group =  "de.lorenzgorse"
 version = "1.0-SNAPSHOT"
@@ -11,8 +13,45 @@ repositories {
 }
 
 plugins {
-    kotlin("jvm") version "1.4.30"
+    kotlin("multiplatform") version "1.4.30"
     application
+}
+
+kotlin {
+    jvm {
+        withJava()
+    }
+    js {
+        browser()
+    }
+
+    sourceSets {
+        val jsMain by getting {
+            dependencies {
+                implementation(npm("file-type", "16.2.0"))
+                implementation(npm("is-svg", "4.2.1"))
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.1.0")
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2")
+            }
+        }
+        val jvmMain by getting {
+            dependencies {
+                implementation("ch.qos.logback:logback-classic:1.2.3")
+                implementation("io.ktor:ktor-server-netty:$ktorVersion")
+                implementation("io.ktor:ktor-gson:$ktorVersion")
+                implementation("io.ktor:ktor-client-cio:$ktorVersion")
+                implementation("io.ktor:ktor-websockets:$ktorVersion")
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.1.0")
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2")
+            }
+        }
+        val jvmTest by getting {
+            dependencies {
+                implementation("com.xenomachina:kotlin-argparser:2.0.7")
+                implementation("org.junit.jupiter:junit-jupiter:5.5.2")
+            }
+        }
+    }
 }
 
 application {
@@ -20,37 +59,22 @@ application {
     applicationDefaultJvmArgs = listOf("-Xmx500M")
 }
 
-dependencies {
-    implementation(kotlin("stdlib-jdk8"))
-    implementation("ch.qos.logback:logback-classic:1.2.3")
-    implementation("io.ktor:ktor-server-netty:$ktorVersion")
-    implementation("io.ktor:ktor-gson:$ktorVersion")
-    implementation("io.ktor:ktor-client-cio:$ktorVersion")
-    implementation("io.ktor:ktor-websockets:$ktorVersion")
-    testImplementation("com.xenomachina:kotlin-argparser:2.0.7")
-    testImplementation("org.junit.jupiter:junit-jupiter:5.5.2")
+task<Copy>("copyJsArtifacts") {
+    val webpackTask = tasks.getByName<KotlinWebpack>("jsBrowserDevelopmentWebpack")
+    dependsOn(webpackTask)
+    from(webpackTask.outputFile)
+
+    val jvmProcessResources = tasks.getByName<ProcessResources>("jvmProcessResources")
+    into(jvmProcessResources.destinationDir.resolve("static"))
 }
 
-
-/* Copy compiled fronted resources to the static files directory. */
-
-task<Copy>("copyFrontendArtifacts") {
-    dependsOn("browser:browserWebpack")
-    dependsOn("browser:processResources")
-    from("browser/build/distributions")
-    into("build/resources/main/static")
+tasks.getByName<ProcessResources>("jvmProcessResources") {
+    dependsOn(tasks.getByName("copyJsArtifacts"))
 }
-
-tasks {
-    processResources {
-        dependsOn("copyFrontendArtifacts")
-    }
-}
-
 
 /* Setup testing. */
 
-tasks.test {
+tasks.getByName<KotlinJvmTest>("jvmTest") {
     useJUnitPlatform()
     testLogging {
         this.events(FAILED, PASSED, SKIPPED, STARTED)
@@ -60,8 +84,8 @@ tasks.test {
 
 /* Run the loadtest. */
 
-task<JavaExec>("loadtest") {
-    classpath = sourceSets.test.get().runtimeClasspath
-    main = "de.lorenzgorse.chatroulette.LoadtestKt"
-    maxHeapSize = "2G"
-}
+//task<JavaExec>("loadtest") {
+//    classpath = sourceSets.getByName("jvmTest").runtimeClasspath
+//    main = "de.lorenzgorse.chatroulette.LoadtestKt"
+//    maxHeapSize = "2G"
+//}
