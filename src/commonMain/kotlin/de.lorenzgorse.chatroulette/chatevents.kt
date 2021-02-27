@@ -42,8 +42,14 @@ sealed class ChatEvent {
         @Serializable
         data class Text(val text: String) : Message()
 
-        @Serializable
-        data class Image(val image: ByteArray) : Message()
+        /**
+         * An image message. The wrapped type is an ArrayBuffer in the browser and a
+         * ByteArray on the server. Using a ByteArray in the browser is very slow, thus
+         * the distinction.
+         *
+         * TODO: can we model this in a type-safe way?
+         */
+        data class Image(val image: Any) : Message()
 
     }
 

@@ -9,8 +9,8 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.khronos.webgl.ArrayBuffer
-import org.khronos.webgl.Uint8Array
 import org.w3c.dom.*
+import org.w3c.files.Blob
 import org.w3c.xhr.FormData
 
 val inputForm = document.getElementById("input-form") as HTMLFormElement
@@ -86,9 +86,10 @@ fun main() {
     }
 }
 
-private fun handleFrame(event: MessageEvent) {
+private suspend fun handleFrame(event: MessageEvent) {
     val chatEvent = when (val data = event.data) {
         is String -> Json.decodeFromString<ChatEvent>(data)
+        is Blob -> ChatEvent.Message.Image(readBlob(data))
         else -> return
     }
     when (chatEvent) {
@@ -119,8 +120,8 @@ private fun handleFrame(event: MessageEvent) {
             appendTextMessage("Stranger", chatEvent.text)
         }
         is ChatEvent.Message.Image -> {
-            val uint8Array = Uint8Array(chatEvent.image.toTypedArray())
-            appendImageMessage("Stranger", "image/jpeg", uint8Array.buffer)
+            require(chatEvent.image is ArrayBuffer)
+            appendImageMessage("Stranger", "image/jpeg", chatEvent.image)
         }
     }
 }
@@ -139,8 +140,7 @@ private suspend fun sendImages(webSocket: WebSocket) {
         val isSvg = isSvg(arrayToString(arrayBuffer))
         val mime = if (isSvg) "image/svg+xml" else fileType(arrayBuffer)?.mime
         if (mime != null && mime.startsWith("image/")) {
-            val byteArray = arrayBufferToByteArray(arrayBuffer)
-            sendChatEvent(webSocket, ChatEvent.Message.Image(byteArray))
+            sendChatEvent(webSocket, ChatEvent.Message.Image(arrayBuffer))
             appendImageMessage("You", mime, arrayBuffer)
         } else {
             window.alert("Sorry, that is not an image.")
@@ -149,7 +149,13 @@ private suspend fun sendImages(webSocket: WebSocket) {
 }
 
 private fun sendChatEvent(webSocket: WebSocket, chatEvent: ChatEvent) {
-    webSocket.send(Json.encodeToString(chatEvent))
+    when (chatEvent) {
+        is ChatEvent.Message.Image -> {
+            require(chatEvent.image is ArrayBuffer)
+            webSocket.send(chatEvent.image)
+        }
+        else -> webSocket.send(Json.encodeToString(chatEvent))
+    }
 }
 
 private fun enableInputs(enabled: Boolean) {

@@ -145,6 +145,8 @@ class Chat(
                     val chatEvent = Json.decodeFromString<ChatEvent>(json)
                     outbox.send(chatEvent)
                 }
+                is Frame.Binary ->
+                    outbox.send(ChatEvent.Message.Image(frame.data))
                 else ->
                     log.debug("Ignoring message: $frame")
             }
@@ -173,8 +175,16 @@ class Chat(
     }
 
     private suspend fun sendChatEvent(chatEvent: ChatEvent) {
-        val json = Json.encodeToString(chatEvent)
-        outgoing.send(Frame.Text(json))
+        when (chatEvent) {
+            is ChatEvent.Message.Image -> {
+                require(chatEvent.image is ByteArray)
+                outgoing.send(Frame.Binary(true, chatEvent.image))
+            }
+            else -> {
+                val json = Json.encodeToString(chatEvent)
+                outgoing.send(Frame.Text(json))
+            }
+        }
     }
 
 }

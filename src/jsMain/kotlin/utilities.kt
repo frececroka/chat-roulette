@@ -48,16 +48,6 @@ fun arrayToBase64String(a: ArrayBuffer): String {
     return window.btoa(arrayToString(a))
 }
 
-fun arrayBufferToByteArray(arrayBuffer: ArrayBuffer): ByteArray {
-    // TODO: this is pretty slow...
-    val uint8Array = Uint8Array(arrayBuffer)
-    val byteArray = ByteArray(uint8Array.length)
-    for (i in 0..uint8Array.length) {
-        byteArray[i] = uint8Array[i]
-    }
-    return byteArray
-}
-
 fun FileList?.toArray(): List<File> =
         if (this == null) listOf()
         else
