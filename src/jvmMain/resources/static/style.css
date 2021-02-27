@@ -61,6 +61,8 @@ input[disabled] {
 }
 
 #chat-box img {
+    display: block;
+    margin: auto;
     max-width: 100%;
 }
 
