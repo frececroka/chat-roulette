@@ -93,3 +93,16 @@ tasks.getByName<KotlinJvmTest>("jvmTest") {
 //    main = "de.lorenzgorse.chatroulette.LoadtestKt"
 //    maxHeapSize = "2G"
 //}
+
+/* Setup distribution */
+
+distributions {
+    main {
+        contents {
+            from("$buildDir/libs") {
+                rename("${rootProject.name}-jvm", rootProject.name)
+                into("lib")
+            }
+        }
+    }
+}
